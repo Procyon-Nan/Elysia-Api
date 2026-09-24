@@ -67,7 +67,7 @@
   --halo-a: rgba(220, 24, 93, 0.06);    /* 弱化全局光晕扩散，避免全屏泛色 */
   --btn-inset-hi: rgba(255, 255, 255, 0.22); /* 主按钮顶边高光（暗色下减弱） */
   --halo-b: rgba(99, 102, 241, 0.04);
-  /* 左下兰紫:与登录页 garden-aurora::after 同色系,控制台常态承接该角光泽 */
+  /* 左下兰紫：与登录页背景光晕同色系，控制台常态承接该角光泽 */
   --halo-c: rgba(176, 141, 238, 0.05);
 
   --grad-a: var(--rose);                /* 品牌渐变：瑰梅 → 明艳粉 */
@@ -514,7 +514,7 @@ html.theme-transitioning :where(body, #root, #root *):not(.theme-sun):not(.theme
     opacity: 0;
   }
 }
-/* 夜间:canvas 预印浓度 0.40(见 login-renderer),交接两端对齐防浓度跳变。 */
+/* 夜间：全局到达残影的透明度与登录页交接保持一致，防止切页时亮度跳变。 */
 @keyframes arrival-echo-hold-dark {
   0%, 62% {
     opacity: 0.4;

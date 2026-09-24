@@ -130,18 +130,33 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
 /** 用 panel token 校验登录：命中受保护端点即视为有效。
  * 失败时抛 ApiError 并区分令牌无效与服务异常，由登录页分流展示文案。 */
-export async function verifyToken(token: string): Promise<void> {
+export async function verifyToken(token: string, signal?: AbortSignal): Promise<void> {
   let response: Response
+  const requestController = new AbortController()
+  let timedOut = false
+  const timeoutId = window.setTimeout(() => {
+    timedOut = true
+    requestController.abort()
+  }, 15_000)
+  const abortFromCaller = () => requestController.abort()
+  if (signal) {
+    if (signal.aborted) requestController.abort()
+    else signal.addEventListener('abort', abortFromCaller, { once: true })
+  }
   try {
     response = await fetch(`${ADMIN_BASE}/health`, {
       headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(15_000),
+      signal: requestController.signal,
     })
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'TimeoutError') {
+    if (signal?.aborted) throw err
+    if (timedOut) {
       throw new ApiError('timeout', '连接后端超时，请检查网络与服务状态', 0)
     }
     throw new ApiError('network_error', '无法连接到后端，请检查网络与服务状态', 0)
+  } finally {
+    window.clearTimeout(timeoutId)
+    signal?.removeEventListener('abort', abortFromCaller)
   }
   if (response.status === 401) {
     throw new ApiError('unauthorized', 'Token 无效，请确认与后端 config.json 中的 panelAccessToken 一致', 401)

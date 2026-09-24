@@ -19,7 +19,7 @@ const SUN_RAYS = [
   'M3.7 3.7 6.2 6.2',
 ] as const
 
-export function ThemeToggle({ tooltip = false }: { tooltip?: boolean } = {}) {
+export function ThemeToggle({ tooltip = false, variant = 'default' }: { tooltip?: boolean; variant?: 'default' | 'login' } = {}) {
   const clipId = useId()
   const { theme, toggleTheme } = useTheme()
   const dark = theme === 'dark'
@@ -42,30 +42,37 @@ export function ThemeToggle({ tooltip = false }: { tooltip?: boolean } = {}) {
       aria-label={dark ? '切换到浅色模式' : '切换到深色模式'}
       aria-pressed={dark}
       title={tooltip ? undefined : dark ? '浅色模式' : '深色模式'}
-      className={cn(
+      className={variant === 'login' ? 'theme-toggle' : cn(
         'theme-toggle icon-toggle relative inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground max-rail:h-11 max-rail:w-11',
         'transition-colors duration-300 hover:bg-wash hover:text-rose',
         switching && 'is-switching',
       )}
     >
-      <svg viewBox="0 0 24 24" className="theme-sun" aria-hidden="true">
-        <defs>
-          <clipPath id={clipId}>
-            <path className="sun-clip-path" d="M0 0h25a1 1 0 0010 10v14H0Z" />
-          </clipPath>
-        </defs>
-        <g stroke="currentColor" strokeLinecap="round">
-          <circle
-            className="sun-disc"
-            cx="12"
-            cy="12"
-            r="5"
-            fill="currentColor"
-            clipPath={`url(#${clipId})`}
-          />
-          <path className="sun-ray" d={SUN_RAYS.join(' ')} fill="none" strokeWidth={2} />
-        </g>
-      </svg>
+      {variant === 'login' ? (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path className="theme-moon" d="M20 14.1A8.2 8.2 0 0 1 9.9 4a8.2 8.2 0 1 0 10.1 10.1Z" />
+          <g className="login-theme-sun"><circle cx="12" cy="12" r="3.5" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></g>
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" className="theme-sun" aria-hidden="true">
+          <defs>
+            <clipPath id={clipId}>
+              <path className="sun-clip-path" d="M0 0h25a1 1 0 0010 10v14H0Z" />
+            </clipPath>
+          </defs>
+          <g stroke="currentColor" strokeLinecap="round">
+            <circle
+              className="sun-disc"
+              cx="12"
+              cy="12"
+              r="5"
+              fill="currentColor"
+              clipPath={`url(#${clipId})`}
+            />
+            <path className="sun-ray" d={SUN_RAYS.join(' ')} fill="none" strokeWidth={2} />
+          </g>
+        </svg>
+      )}
     </button>
   )
   return tooltip ? (
