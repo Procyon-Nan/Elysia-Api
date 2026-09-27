@@ -1,0 +1,144 @@
+:root {
+  /* 运行时由 login-handoff.ts 注入；这里仅保留与权威常量一致的 CSS fallback。 */
+  --login-handoff-flight-duration: 850ms;
+  --login-handoff-blend-duration: 160ms;
+  --brand-inset-x: 22px;
+  --brand-inset-y: 22px;
+  --brand-logo-height: 34px;
+  --brand-logo-width: 34.816px;
+  --brand-row-height: max(var(--brand-logo-height), calc(1.125rem * 1.2 + 0.75rem * 1.5));
+  --brand-logo-top: calc(var(--brand-inset-y) + (var(--brand-row-height) - var(--brand-logo-height)) / 2);
+}
+
+.login-handoff-anchor {
+  position: fixed;
+  z-index: -1;
+  top: var(--brand-logo-top);
+  left: var(--brand-inset-x);
+  width: var(--brand-logo-width);
+  height: var(--brand-logo-height);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.brand-mark-logo {
+  display: block;
+  width: var(--brand-logo-width);
+  height: var(--brand-logo-height);
+  object-fit: fill;
+  opacity: 1;
+  transition: opacity 120ms ease-out;
+}
+
+.login-handoff {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.login-handoff-backdrop,
+.login-handoff-shield {
+  position: absolute;
+  inset: 0;
+}
+
+.login-handoff-backdrop {
+  z-index: -1;
+  opacity: 1;
+  overflow: hidden;
+  animation: login-handoff-backdrop var(--login-handoff-flight-duration) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.login-handoff-background-garden,
+.login-handoff-background-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.login-handoff-background-garden {
+  overflow: hidden;
+}
+
+.login-handoff-background-mist {
+  position: absolute;
+  inset: -12%;
+}
+
+.login-handoff-background-clearance {
+  position: absolute;
+  inset: 0;
+}
+
+.login-handoff-background-particles {
+  display: block;
+}
+
+.login-handoff-shield {
+  z-index: 2;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.login-handoff-canvas {
+  position: fixed;
+  z-index: 1;
+  display: block;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.login-handoff-target {
+  position: fixed;
+  z-index: 1;
+  top: var(--brand-logo-top);
+  left: var(--brand-inset-x);
+  width: var(--brand-logo-width);
+  height: var(--brand-logo-height);
+  object-fit: fill;
+  opacity: 0;
+  will-change: opacity;
+}
+
+@keyframes login-handoff-backdrop {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+[data-login-handoff-paused] .login-handoff-backdrop,
+[data-login-handoff-paused] .login-handoff-home {
+  animation-play-state: paused;
+}
+
+.login-handoff-home {
+  animation: login-handoff-home var(--login-handoff-flight-duration) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes login-handoff-home {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.login-handoff-home[data-login-handoff='flying'] .brand-mark-logo {
+  opacity: 0;
+}
+
+.login-handoff-home[data-login-handoff='blending'] .brand-mark-logo {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-handoff-backdrop,
+  .login-handoff-home {
+    animation-duration: 1ms;
+  }
+}
+
+@media (max-width: 760px) {
+  /* 移动端没有常驻侧栏，真实目标保持隐藏，由飞行 Canvas 在融合阶段淡出。 */
+  .login-handoff-target {
+    opacity: 0 !important;
+  }
+}

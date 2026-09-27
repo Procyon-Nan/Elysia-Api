@@ -272,6 +272,7 @@
   transition: color 180ms;
 }
 .login-page .theme-toggle:hover { color: var(--control-hover); }
+.login-page .theme-toggle:disabled { cursor: default; opacity: .55; }
 .login-page .theme-toggle:focus-visible { outline: 1px solid var(--focus); outline-offset: 3px; }
 .login-page .terminal-status { position: absolute; top: 100%; left: 0; margin: 16px 0 0; color: var(--muted); font-size: 11px; letter-spacing: 1px; }
 .login-page .completion-status { position: absolute; top: 100%; left: 0; width: 100%; margin: 16px 0 0; color: var(--muted); font-size: 12px; text-align: center; }

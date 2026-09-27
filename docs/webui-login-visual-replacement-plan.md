@@ -223,8 +223,10 @@ ready + HTTP 200
   → waiting-peak
   → lighting
   → lit
-  → 场景淡出
-  → setToken(token)
+  → 点亮最终帧保持 340ms
+  → Portal 复制刻印画面
+  → setToken(token) + navigate('/overview', { replace: true })
+  → 交接刻印飞向首页品牌位置并融合
 ```
 
 每次入场、失败或成功流程都使用递增 `runId`；卸载、重置、页面隐藏或新提交后，旧 Promise 不得修改阶段、调用 `setToken()` 或继续绘制。
@@ -244,7 +246,7 @@ verifyToken(token: string, signal?: AbortSignal): Promise<void>
 | 空值 | 使用项目现有本地提示，不调用后端 | 不增加 |
 | HTTP 401 | 抖动、裂痕/碎片、恢复输入；第五次进入 `exhausted` | 增加 |
 | 其他 HTTP 错误、超时、网络异常 | 显示服务状态提示，保留输入 | 不增加 |
-| HTTP 200 | 执行完整成功动画；`lit` 淡出完成后调用 `setToken()` | 不增加 |
+| HTTP 200 | 执行完整成功动画；Portal 接管点亮画面后调用 `setToken()` 并导航 | 不增加 |
 
 成功动画期间输入禁用，网络请求使用独立 `AbortController`；卸载时取消。除 Enter 提交外不提供普通登录按钮，避免破坏参考终端的 360×80 视觉结构。
 
@@ -341,7 +343,7 @@ verifyToken(token: string, signal?: AbortSignal): Promise<void>
 - [x] Enter 提交而非普通按钮提交，重复 Enter 只发一个请求。
 - [x] HTTP 401 才增加裂痕；第 5 次锁定并显示原版错误欢迎文案。
 - [x] 500、超时、断网不增加裂痕，输入内容保留。
-- [x] 成功动画结束前不触发 `setToken()`；结束后进入现有控制台路由。
+- [x] Portal 接管点亮画面前不触发 `setToken()`；接管后进入现有控制台路由并执行品牌交接。
 - [x] 主题切换不清空输入、不重播入场、不重置失败次数。
 - [x] `prefers-reduced-motion`、页面隐藏、React StrictMode 重挂载和卸载均不留下 RAF、监听器、Observer 或未处理 Promise。
 - [x] 外部 `webuiDir` 和 Go 内嵌 `/ui/` 均能加载刻印 PNG、CSS、JS 和 SVG。

@@ -1,35 +1,18 @@
 import { cn } from '@/lib/utils'
+import { brandImageUrl } from '@/lib/login-handoff'
 
-/** 侧栏与登录页共用的品牌块：彩色 logo + 名称。 */
-export function BrandMark({
-  size = 'nav',
-  className,
-}: {
-  size?: 'nav' | 'login'
-  className?: string
-}) {
-  // 登录页变体：仅一行「Elysia API Console」文字（logo 以背景刻印形式
-  // 由登录页另行铺陈），与表单卡片同一中轴线。
-  if (size === 'login') {
-    return (
-      <div className={cn('flex justify-center', className)}>
-        <div className="flex items-baseline gap-2.5">
-          <b className="font-display text-xl font-semibold leading-[1.2] tracking-[0.02em]">
-            Elysia API
-          </b>
-          <span className="text-2xs uppercase tracking-[0.32em] text-muted-foreground">
-            Console
-          </span>
-        </div>
-      </div>
-    )
-  }
+/** 侧栏品牌块；图标几何与登录交接层共用 login-handoff.css 的变量。 */
+export function BrandMark({ className }: { className?: string }) {
   return (
-    <div className={cn('flex items-center gap-[11px]', className)}>
+    <div className={cn('brand-mark flex items-center gap-[11px]', className)}>
       <img
-        src={`${import.meta.env.BASE_URL}logo-color.png`}
+        src={brandImageUrl()}
         alt="Elysia 徽标"
-        className="h-[34px] w-auto drop-shadow-[0_2px_6px_var(--halo-a)]"
+        width={128}
+        height={125}
+        loading="eager"
+        decoding="async"
+        className="brand-mark-logo shrink-0 drop-shadow-[0_2px_6px_var(--halo-a)]"
       />
       <div className="min-w-0">
         <b className="block font-display font-semibold text-lg leading-[1.2] tracking-[0.02em]">

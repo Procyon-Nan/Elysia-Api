@@ -246,11 +246,18 @@ export async function createSignet(canvas: HTMLCanvasElement, idleGlowCanvas: HT
       y / (RENDER_SIZE - 1) * (FIELD_SIZE - 1)),
   });
   const active: { offset: number; core: number; glow: number; line: number; fieldX: number; fieldY: number; color: number[]; coreWeight: number; arrival: number }[] = [];
+  const contentBounds = { minX: RENDER_SIZE, minY: RENDER_SIZE, maxX: 0, maxY: 0 };
   for (let i = 0; i < RENDER_SIZE * RENDER_SIZE; i++) {
     const core = solidAlpha(fillPixels, i * 4);
     const sourceAlpha = fillPixels[i * 4 + 3] / 255;
     const line = contour[i];
     if (sourceAlpha < .002) continue;
+    if (core > .12) {
+      contentBounds.minX = Math.min(contentBounds.minX, i % RENDER_SIZE);
+      contentBounds.maxX = Math.max(contentBounds.maxX, i % RENDER_SIZE);
+      contentBounds.minY = Math.min(contentBounds.minY, Math.floor(i / RENDER_SIZE));
+      contentBounds.maxY = Math.max(contentBounds.maxY, Math.floor(i / RENDER_SIZE));
+    }
     const fieldX = (i % RENDER_SIZE) / (RENDER_SIZE - 1) * (FIELD_SIZE - 1);
     const fieldY = Math.floor(i / RENDER_SIZE) / (RENDER_SIZE - 1) * (FIELD_SIZE - 1);
     active.push({
@@ -259,6 +266,11 @@ export async function createSignet(canvas: HTMLCanvasElement, idleGlowCanvas: HT
       coreWeight: core / sourceAlpha,
       arrival: interpolate(field, fieldX, fieldY),
     });
+  }
+  contentBounds.maxX += 1;
+  contentBounds.maxY += 1;
+  if (contentBounds.minX >= contentBounds.maxX || contentBounds.minY >= contentBounds.maxY) {
+    throw new Error('刻印素材没有可见实体');
   }
   let progress = 0;
   let request = 0;
@@ -441,5 +453,13 @@ export async function createSignet(canvas: HTMLCanvasElement, idleGlowCanvas: HT
     idleGlowCanvas.width = idleGlowCanvas.height = 1;
   }
   refreshTheme();
-  return { play, breakApart, reset, refreshTheme, syncMotion, destroy };
+  return {
+    play,
+    breakApart,
+    reset,
+    refreshTheme,
+    syncMotion,
+    getContentBounds: () => ({ ...contentBounds }),
+    destroy,
+  };
 }

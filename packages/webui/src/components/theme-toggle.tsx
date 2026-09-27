@@ -19,7 +19,11 @@ const SUN_RAYS = [
   'M3.7 3.7 6.2 6.2',
 ] as const
 
-export function ThemeToggle({ tooltip = false, variant = 'default' }: { tooltip?: boolean; variant?: 'default' | 'login' } = {}) {
+export function ThemeToggle({
+  tooltip = false,
+  variant = 'default',
+  disabled = false,
+}: { tooltip?: boolean; variant?: 'default' | 'login'; disabled?: boolean } = {}) {
   const clipId = useId()
   const { theme, toggleTheme } = useTheme()
   const dark = theme === 'dark'
@@ -29,6 +33,7 @@ export function ThemeToggle({ tooltip = false, variant = 'default' }: { tooltip?
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
   const handleClick = () => {
+    if (disabled) return
     toggleTheme()
     setSwitching(true)
     window.clearTimeout(timer.current)
@@ -39,6 +44,7 @@ export function ThemeToggle({ tooltip = false, variant = 'default' }: { tooltip?
     <button
       type="button"
       onClick={handleClick}
+      disabled={disabled}
       aria-label={dark ? '切换到浅色模式' : '切换到深色模式'}
       aria-pressed={dark}
       title={tooltip ? undefined : dark ? '浅色模式' : '深色模式'}

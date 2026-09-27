@@ -2,11 +2,13 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { getToken, subscribeToken, syncCookieFromStorage } from './lib/auth'
 import { AppLayout } from './components/app-layout'
+import { LoginHandoffProvider } from './components/login-handoff'
+import { prepareBrandImage } from './lib/login-handoff'
+import { OverviewPage } from './pages/overview'
 
-// 页面按路由拆包：recharts 等重组件只随用到它的页面下载，
-// 登录页与首屏外壳保持轻量。
+// 登录页和首页必须在认证交接时同时可用：首页静态引入，避免飞行过程中出现
+// Overview chunk 尚未完成而显示骨架屏。其他页面仍按路由拆包。
 const LoginPage = lazy(() => import('./pages/login').then((m) => ({ default: m.LoginPage })))
-const OverviewPage = lazy(() => import('./pages/overview').then((m) => ({ default: m.OverviewPage })))
 const SourcesPage = lazy(() => import('./pages/sources').then((m) => ({ default: m.SourcesPage })))
 const ProtocolDesignerPage = lazy(() =>
   import('./pages/protocol-designer').then((m) => ({ default: m.ProtocolDesignerPage })),
@@ -74,32 +76,39 @@ export function App() {
   const token = useAuthState()
   usePreloadRoutes(!!token)
 
+  useEffect(() => {
+    // 登录交接与侧栏共用同一张品牌图；应用启动时完成解码，避免点亮后等待图片。
+    void prepareBrandImage().catch(() => undefined)
+  }, [])
+
   return (
     <HashRouter>
-      <Suspense fallback={<BootFallback />}>
-        {token ? (
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/overview" element={<OverviewPage />} />
-              <Route path="/sources" element={<SourcesPage />} />
-              <Route path="/protocols" element={<ProtocolDesignerPage />} />
-              <Route path="/groups" element={<GroupsPage />} />
-              <Route path="/tokens" element={<TokensPage />} />
-              <Route path="/usage" element={<UsageStatsPage />} />
-              <Route path="/usage-logs" element={<UsageLogsPage />} />
-              <Route path="/logs" element={<SystemLogsPage />} />
-              <Route path="/runtime" element={<RuntimeConfigPage />} />
-              <Route path="/diagnostics" element={<DiagnosticsPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/overview" replace />} />
-          </Routes>
-        ) : (
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        )}
-      </Suspense>
+      <LoginHandoffProvider>
+        <Suspense fallback={<BootFallback />}>
+          {token ? (
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/overview" element={<OverviewPage />} />
+                <Route path="/sources" element={<SourcesPage />} />
+                <Route path="/protocols" element={<ProtocolDesignerPage />} />
+                <Route path="/groups" element={<GroupsPage />} />
+                <Route path="/tokens" element={<TokensPage />} />
+                <Route path="/usage" element={<UsageStatsPage />} />
+                <Route path="/usage-logs" element={<UsageLogsPage />} />
+                <Route path="/logs" element={<SystemLogsPage />} />
+                <Route path="/runtime" element={<RuntimeConfigPage />} />
+                <Route path="/diagnostics" element={<DiagnosticsPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/overview" replace />} />
+            </Routes>
+          ) : (
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          )}
+        </Suspense>
+      </LoginHandoffProvider>
     </HashRouter>
   )
 }

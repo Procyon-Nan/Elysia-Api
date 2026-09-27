@@ -3,13 +3,19 @@ import { flushSync } from 'react-dom'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { LoginSignet } from '@/components/login-signet'
 import { LoginSignature } from '@/components/login-signature'
+import { useLoginHandoff } from '@/components/login-handoff'
 import { useTheme } from '@/lib/theme'
-import { setToken } from '@/lib/auth'
 import { ApiError, verifyToken } from '@/lib/api'
 import { createAmbientParticles } from '@/lib/ambient-particles'
 import { createSignet } from '@/lib/signet-renderer'
 import { createTokenField } from '@/lib/token-field'
 import { useLoginMotion } from '@/lib/login-motion'
+import {
+  copyBackgroundCanvas,
+  type BackgroundLayerSnapshot,
+  type BackgroundSnapshot,
+  type HandoffSource,
+} from '@/lib/login-handoff'
 import './login.css'
 
 type LoginPhase =
@@ -27,6 +33,8 @@ type LoginPhase =
   | 'exhausted'
 
 const MAX_FAILURES = 5
+// 手动调整：刻印完成点亮后，在登录页保持最终帧的时间（毫秒）。
+const SIGNET_HOLD_DURATION = 340
 
 function waitForAnimations(element: Element | null, subtree = false): Promise<void> {
   if (!element) return Promise.resolve()
@@ -41,9 +49,19 @@ function isCurrent(mounted: boolean, runId: number, currentRunId: number): boole
   return mounted && runId === currentRunId
 }
 
+function readBackgroundLayer(element: HTMLElement): BackgroundLayerSnapshot {
+  const style = getComputedStyle(element)
+  return {
+    background: style.background,
+    opacity: style.opacity,
+    transform: style.transform,
+  }
+}
+
 export function LoginPage() {
   const { theme } = useTheme()
   const motion = useLoginMotion()
+  const { active: handoffActive, prepareAndNavigate } = useLoginHandoff()
   const framePrefix = useId().replace(/:/g, '')
   const [value, setValue] = useState('')
   const [status, setStatus] = useState('')
@@ -54,6 +72,11 @@ export function LoginPage() {
   const [awakening, setAwakening] = useState(false)
   const [entry, setEntry] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
+  const gardenRef = useRef<HTMLDivElement>(null)
+  const mistRoseRef = useRef<HTMLDivElement>(null)
+  const mistLilacRef = useRef<HTMLDivElement>(null)
+  const mistPearlRef = useRef<HTMLDivElement>(null)
+  const clearanceRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
   const signetElementRef = useRef<HTMLDivElement>(null)
   const signetMotionRef = useRef<HTMLDivElement>(null)
@@ -73,7 +96,7 @@ export function LoginPage() {
   const failureCountRef = useRef(0)
   const inputShakeRef = useRef<Animation | null>(null)
   const idleAnimationsRef = useRef<Animation[]>([])
-  const exitAnimationRef = useRef<Animation | null>(null)
+  const handoffHoldRef = useRef<Animation | null>(null)
   const hiddenAnimationsRef = useRef<Animation[]>([])
 
   const frameId = (name: string) => `${framePrefix}-${name}`
@@ -153,6 +176,8 @@ export function LoginPage() {
       requestRef.current?.abort()
       requestRef.current = null
       inputShakeRef.current?.cancel()
+      handoffHoldRef.current?.cancel()
+      handoffHoldRef.current = null
       idleAnimationsRef.current.forEach((animation) => animation.cancel())
       idleAnimationsRef.current = []
       scene?.getAnimations({ subtree: true }).forEach((animation) => animation.cancel())
@@ -264,6 +289,8 @@ export function LoginPage() {
       requestRef.current = null
       stopIdleMotion()
       inputShakeRef.current?.cancel()
+      handoffHoldRef.current?.cancel()
+      handoffHoldRef.current = null
       scene.getAnimations({ subtree: true }).forEach((animation) => animation.cancel())
       signetRef.current?.destroy()
       signetRef.current = null
@@ -304,14 +331,14 @@ export function LoginPage() {
         if (animation.playState === 'paused') animation.play()
       }
       hiddenAnimationsRef.current = []
-      if (exitAnimationRef.current?.playState === 'paused') exitAnimationRef.current.play()
+      if (handoffHoldRef.current?.playState === 'paused') handoffHoldRef.current.play()
     }
   }, [motion.hidden, phase])
 
   useEffect(() => {
     if (staticMotion) {
       inputShakeRef.current?.cancel()
-      exitAnimationRef.current?.finish()
+      handoffHoldRef.current?.finish()
       if (awakening) idleAnimationsRef.current.forEach((animation) => animation.finish())
       else stopIdleMotion()
     } else if (!awakening && phase !== 'exhausted' && signetRef.current && !idleAnimationsRef.current.length) {
@@ -382,18 +409,49 @@ export function LoginPage() {
     if (lit === false || !isCurrent(mountedRef.current, runId, runIdRef.current)) return
     commitPhase('lit')
     const scene = sceneRef.current
-    if (!scene) return
-    const exit = scene.animate(
-      [{ opacity: 1, offset: 0 }, { opacity: 1, offset: 0.5 }, { opacity: 0, offset: 1 }],
-      { duration: motion.reduced ? 0 : 720, fill: 'forwards' },
+    const root = rootRef.current
+    const garden = gardenRef.current
+    const mistRose = mistRoseRef.current
+    const mistLilac = mistLilacRef.current
+    const mistPearl = mistPearlRef.current
+    const clearance = clearanceRef.current
+    const artwork = signetArtRef.current
+    const idleGlow = signetIdleGlowRef.current
+    const signet = signetRef.current
+    const particles = particlesRef.current
+    if (!scene || !root || !garden || !mistRose || !mistLilac || !mistPearl || !clearance || !artwork || !idleGlow || !signet || !particles) return
+    // 点亮最终帧保持一小段时间，让用户看清刻印完成，再交给全局 Portal 接管。
+    const hold = scene.animate(
+      [{ opacity: 1 }, { opacity: 1 }],
+      { duration: motion.reduced ? 0 : SIGNET_HOLD_DURATION, fill: 'forwards' },
     )
-    exitAnimationRef.current = exit
-    if (document.hidden) exit.pause()
-    const completed = await exit.finished.then(() => true, () => false)
-    exitAnimationRef.current = null
-    if (!completed || !isCurrent(mountedRef.current, runId, runIdRef.current)) return
-    setToken(token)
-  }, [motion.reduced, riseToIdlePeak, commitPhase])
+    handoffHoldRef.current = hold
+    if (document.hidden) hold.pause()
+    const held = await hold.finished.then(() => true, () => false)
+    if (handoffHoldRef.current === hold) handoffHoldRef.current = null
+    if (!held || !isCurrent(mountedRef.current, runId, runIdRef.current)) return
+    const particlesStyle = getComputedStyle(particles)
+    const mistBanks = [
+      readBackgroundLayer(mistRose),
+      readBackgroundLayer(mistLilac),
+      readBackgroundLayer(mistPearl),
+    ] as const
+    const background: BackgroundSnapshot = {
+      root: getComputedStyle(root).background,
+      garden: readBackgroundLayer(garden),
+      mistBanks,
+      clearance: readBackgroundLayer(clearance),
+      particles: copyBackgroundCanvas(particles, particlesStyle),
+    }
+    const source: HandoffSource = {
+      artwork,
+      idleGlow,
+      artworkRect: artwork.getBoundingClientRect(),
+      contentBounds: signet.getContentBounds(),
+      background,
+    }
+    await prepareAndNavigate(token, source)
+  }, [motion.reduced, riseToIdlePeak, commitPhase, prepareAndNavigate])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -441,14 +499,17 @@ export function LoginPage() {
       data-background-paused={motion.hidden ? '' : undefined}
       aria-busy={isBusy}
     >
-      <div className="morning-garden" aria-hidden="true">
-        <div className="mist-bank mist-bank-rose" />
-        <div className="mist-bank mist-bank-lilac" />
-        <div className="mist-bank mist-bank-pearl" />
-        <div className="background-clearance" />
+      <div ref={gardenRef} className="morning-garden" aria-hidden="true">
+        <div ref={mistRoseRef} className="mist-bank mist-bank-rose" />
+        <div ref={mistLilacRef} className="mist-bank mist-bank-lilac" />
+        <div ref={mistPearlRef} className="mist-bank mist-bank-pearl" />
+        <div ref={clearanceRef} className="background-clearance" />
       </div>
       <canvas ref={particlesRef} className="background-particles" aria-hidden="true" />
-      <ThemeToggle variant="login" />
+      <ThemeToggle
+        variant="login"
+        disabled={handoffActive || isBusy || ['waiting-peak', 'lighting', 'lit'].includes(phase)}
+      />
       <main>
         <div ref={sceneRef} className="login-scene" data-phase={phase}>
           <LoginSignet ref={signetElementRef} motionRef={signetMotionRef} artRef={signetArtRef} idleGlowRef={signetIdleGlowRef} />

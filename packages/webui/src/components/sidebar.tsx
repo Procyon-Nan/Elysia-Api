@@ -69,8 +69,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="flex h-full flex-col gap-[22px] bg-rail-fade py-[22px] pb-[max(18px,env(safe-area-inset-bottom))] text-sidebar-foreground max-rail:bg-background">
-      <BrandMark className="px-[22px]" />
+    <div className="flex h-full flex-col gap-[22px] bg-rail-fade py-[var(--brand-inset-y)] pb-[max(18px,env(safe-area-inset-bottom))] text-sidebar-foreground max-rail:bg-background">
+      <BrandMark className="px-[var(--brand-inset-x)]" />
 
       <nav aria-label="主导航" className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-2">
         {grouped.map(({ group, items }) => (
@@ -114,7 +114,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {/* 底部：主题切换 · 退出登录 */}
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border px-[22px] pt-3.5">
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border px-[var(--brand-inset-x)] pt-3.5">
         <ThemeToggle />
         <Button
           variant="danger"
