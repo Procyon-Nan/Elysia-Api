@@ -1,4 +1,5 @@
 import { createSignetFracture } from './signet-fracture';
+import { BRAND_CONTENT_ALPHA_THRESHOLD, prepareBrandImage } from './brand-assets';
 
 // 在原图内部计算连续到达时间场；渲染阶段只改变同一批像素的充盈度。
 const FIELD_SIZE = 192;
@@ -15,20 +16,10 @@ const LIGHT_DURATION = 2000;
 // 前四次裂痕生长、第五次绷紧并解体的时长，单位毫秒。
 const FRACTURE_DURATION = 1200;
 const SHATTER_DURATION = 1700;
-const SIGNET_URL = `${import.meta.env.BASE_URL}assets/signet/elysia-signet-solid.png`;
 const smoothstep = (start: number, end: number, value: number) => {
   const t = Math.max(0, Math.min(1, (value - start) / (end - start)));
   return t * t * (3 - 2 * t);
 };
-
-async function loadImage(url: string, signal?: AbortSignal) {
-  signal?.throwIfAborted();
-  const image = new Image();
-  image.src = url;
-  await image.decode();
-  signal?.throwIfAborted();
-  return image;
-}
 
 function sampleImage(image: HTMLImageElement, size: number, smoothingQuality: ImageSmoothingQuality = 'low') {
   const surface = document.createElement('canvas');
@@ -213,7 +204,7 @@ function createGlowField(pixels: Uint8ClampedArray, arrival: Float32Array) {
 }
 
 export async function createSignet(canvas: HTMLCanvasElement, idleGlowCanvas: HTMLCanvasElement, reducedMotion: MediaQueryList, root: HTMLElement, signal?: AbortSignal) {
-  const solid = await loadImage(SIGNET_URL, signal);
+  const solid = await prepareBrandImage(signal);
   // StrictMode 的旧 effect 可能在图片解码期间被清理；在共享 canvas 或进行重计算前
   // 再检查一次，确保取消的初始化不会触碰下一轮 effect 的宿主节点。
   signal?.throwIfAborted();
@@ -252,7 +243,8 @@ export async function createSignet(canvas: HTMLCanvasElement, idleGlowCanvas: HT
     const sourceAlpha = fillPixels[i * 4 + 3] / 255;
     const line = contour[i];
     if (sourceAlpha < .002) continue;
-    if (core > .12) {
+    // 交接实体边界与首页 Logo 使用同一 alpha 阈值；点亮传播仍由 solidAlpha() 单独控制。
+    if (sourceAlpha * 255 > BRAND_CONTENT_ALPHA_THRESHOLD) {
       contentBounds.minX = Math.min(contentBounds.minX, i % RENDER_SIZE);
       contentBounds.maxX = Math.max(contentBounds.maxX, i % RENDER_SIZE);
       contentBounds.minY = Math.min(contentBounds.minY, Math.floor(i / RENDER_SIZE));

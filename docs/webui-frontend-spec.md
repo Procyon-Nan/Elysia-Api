@@ -10,7 +10,8 @@ WebUI 负责模型网关的管理与观测，只通过 `/api/admin/*` 与后端�
 - Fraunces 500/600 通过 `@fontsource/fraunces` 自托管；其余字体使用系统栈，产物不得依赖外链资源。
 - WebUI 图片放在 `packages/webui/public`。已有 `favicon.ico`、`favicon.png`、`logo.png`
   保持原路径；其中 `logo.png` 同时被 macOS 打包流程使用。界面品牌图使用
-  `logo-color.png`，登录页与总览水印使用 `role-mask.png`。
+  登录页和控制台品牌图统一使用 `assets/signet/elysia-signet-solid.png`；总览水印使用
+  `role-mask.png`。
 - 构建链为 `npm run build:webui`，完整发行构建由 `npm run build` 将前端产物复制到
   `backend/webui/dist` 并嵌入 Go 二进制，在 `/ui/` 提供服务。
 

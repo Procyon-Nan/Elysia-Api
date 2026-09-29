@@ -30,6 +30,7 @@ type LoginPhase =
   | 'waiting-peak'
   | 'lighting'
   | 'lit'
+  | 'resource-error'
   | 'exhausted'
 
 const MAX_FAILURES = 5
@@ -275,9 +276,7 @@ export function LoginPage() {
       if (cancelled) return
       if (error instanceof DOMException && error.name === 'AbortError') return
       setStatus('页面资源加载失败，请刷新重试')
-      setPhase('ready')
-      particles.start()
-      tokenField.start()
+      setPhase('resource-error')
     })
 
     const dispose = () => {
@@ -469,13 +468,19 @@ export function LoginPage() {
     setStatus('')
     setInvalid(false)
     setVerifying(true)
+    let handoffStarted = false
     try {
       await verifyToken(token, request.signal)
       if (!isCurrent(mountedRef.current, runId, runIdRef.current)) return
+      handoffStarted = true
       await completeLogin(token, runId)
     } catch (caught) {
       if (!isCurrent(mountedRef.current, runId, runIdRef.current) || request.signal.aborted) return
-      if (caught instanceof ApiError && caught.status === 401) {
+      if (handoffStarted) {
+        // 认证已通过但品牌交接未能准备完成时，必须保持闭锁，不能回到可提交状态。
+        setStatus('页面资源加载失败，请刷新重试')
+        setPhase('resource-error')
+      } else if (caught instanceof ApiError && caught.status === 401) {
         await rejectLogin(runId)
       } else {
         setStatus(caught instanceof Error ? caught.message : '无法连接到后端，请检查网络与服务状态')

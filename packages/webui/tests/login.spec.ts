@@ -76,6 +76,7 @@ test('successful login persists the token only after the terminal handoff', asyn
   await expect(page.locator('.login-page')).toHaveAttribute('data-phase', 'welcoming')
   expect(await page.evaluate(() => localStorage.getItem('elysia-webui.panel-token'))).toBeNull()
   expect((await page.context().cookies()).find((cookie) => cookie.name === 'elysia_panel_token')).toBeUndefined()
+  await expect(page.locator('.brand-mark-logo')).toHaveAttribute('src', /assets\/signet\/elysia-signet-solid\.png$/)
   await expect(page).toHaveURL(/#\/overview/, { timeout: 15000 })
   await expect.poll(() => page.evaluate(() => localStorage.getItem('elysia-webui.panel-token'))).toBe('valid-test-token')
 })
@@ -208,12 +209,20 @@ test('hidden lighting pauses and changing reduced motion completes the handoff',
   await expect(page).toHaveURL(/#\/overview/, { timeout: 5000 })
 })
 
-test('an unavailable decorative image leaves authentication usable', async ({ page }) => {
+test('core signet resource failure blocks authentication', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.removeItem('elysia-webui.panel-token')
+    localStorage.setItem('elysia-webui.theme', 'light')
+  })
   await page.route('**/assets/signet/elysia-signet-solid.png', (route) => route.abort())
-  await openLogin(page, true)
+  let healthRequests = 0
+  await page.route('**/api/admin/health', async (route) => {
+    healthRequests += 1
+    await route.abort()
+  })
+  await page.goto('/#/login')
+  await expect(page.locator('.login-page')).toHaveAttribute('data-phase', 'resource-error', { timeout: 15000 })
   await expect(page.locator('.terminal-status')).toHaveText('页面资源加载失败，请刷新重试')
-  await mockHealth(page)
-  await mockAdminDependencies(page)
-  await submitToken(page, 'without-image')
-  await expect(page).toHaveURL(/#\/overview/, { timeout: 5000 })
+  await expect(page.getByLabel(TOKEN_LABEL)).toBeDisabled()
+  expect(healthRequests).toBe(0)
 })

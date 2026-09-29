@@ -3,7 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { getToken, subscribeToken, syncCookieFromStorage } from './lib/auth'
 import { AppLayout } from './components/app-layout'
 import { LoginHandoffProvider } from './components/login-handoff'
-import { prepareBrandImage } from './lib/login-handoff'
+import { prepareBrandImage } from './lib/brand-assets'
 import { OverviewPage } from './pages/overview'
 
 // 登录页和首页必须在认证交接时同时可用：首页静态引入，避免飞行过程中出现

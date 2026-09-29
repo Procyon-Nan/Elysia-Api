@@ -95,7 +95,7 @@
 .login-page .signet-idle-glow { opacity: 0; filter: blur(1.5px) drop-shadow(0 0 4px var(--signet-idle)); }
 .login-page [data-phase="loading"] .signet { opacity: 0; }
 .login-page .login-scene:is([data-phase="shifting"], [data-phase="opening"], [data-phase="ready"], [data-phase="welcoming"], [data-phase="exhausted"], [data-phase="closing"]) .signet { translate: 0 0; }
-.login-page .login-scene:is([data-phase="opening"], [data-phase="ready"], [data-phase="welcoming"], [data-phase="exhausted"], [data-phase="closing"]) .terminal { visibility: visible; }
+.login-page .login-scene:is([data-phase="opening"], [data-phase="ready"], [data-phase="welcoming"], [data-phase="exhausted"], [data-phase="closing"], [data-phase="resource-error"]) .terminal { visibility: visible; }
 .login-page .login-scene:is([data-phase="opening"], [data-phase="ready"], [data-phase="welcoming"], [data-phase="exhausted"]) .origin { animation: login-origin 400ms ease both; }
 .login-page .login-scene:is([data-phase="opening"], [data-phase="ready"], [data-phase="welcoming"], [data-phase="exhausted"]) .frame { animation: login-unfold-diagonal 450ms cubic-bezier(.22, .7, .25, 1) 120ms both; }
 .login-page .login-scene:is([data-phase="opening"], [data-phase="ready"], [data-phase="welcoming"], [data-phase="exhausted"]) :is(.frame-ridge, .frame-detail) { animation: login-frame-trace 500ms cubic-bezier(.25, .6, .3, 1) 260ms both; }

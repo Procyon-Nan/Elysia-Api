@@ -1,9 +1,4 @@
-export interface ContentBounds {
-  readonly minX: number
-  readonly minY: number
-  readonly maxX: number
-  readonly maxY: number
-}
+import type { ContentBounds } from './brand-assets'
 
 export interface BackgroundLayerSnapshot {
   readonly background: string
@@ -42,60 +37,11 @@ export interface HandoffMotionSource {
   readonly background: BackgroundSnapshot
 }
 
-const BRAND_IMAGE_URL = `${import.meta.env.BASE_URL}logo-color.png`
 // 手动调整入口：刻印从登录页实体位置飞向首页品牌位置的持续时间（毫秒）。
 const FLIGHT_DURATION = 850
 // 手动调整入口：到达目标后真实首页品牌图标与交接画面的融合时间（毫秒）。
 const BLEND_DURATION = 160
 const FLIGHT_KEYFRAMES = 33
-
-let brandImagePromise: Promise<HTMLImageElement> | null = null
-
-export function brandImageUrl(): string {
-  return BRAND_IMAGE_URL
-}
-
-/** 交接开始前准备最终品牌图标；同一 Promise 供 BrandMark 和 Portal 复用。 */
-export function prepareBrandImage(): Promise<HTMLImageElement> {
-  if (brandImagePromise) return brandImagePromise
-  const image = new Image()
-  image.decoding = 'async'
-  image.src = BRAND_IMAGE_URL
-  brandImagePromise = image.decode().then(() => image).catch((error: unknown) => {
-    brandImagePromise = null
-    throw error
-  })
-  return brandImagePromise
-}
-
-export function readImageBounds(image: HTMLImageElement): ContentBounds {
-  const width = image.naturalWidth || image.width
-  const height = image.naturalHeight || image.height
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
-    throw new Error('品牌图标尚未完成解码')
-  }
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const context = canvas.getContext('2d', { willReadFrequently: true })
-  if (!context) throw new Error('无法创建品牌图标画布')
-  context.drawImage(image, 0, 0, width, height)
-  const pixels = context.getImageData(0, 0, width, height).data
-  const bounds = { minX: width, minY: height, maxX: 0, maxY: 0 }
-  for (let i = 0; i < width * height; i += 1) {
-    if (pixels[i * 4 + 3] <= 31) continue
-    bounds.minX = Math.min(bounds.minX, i % width)
-    bounds.maxX = Math.max(bounds.maxX, i % width)
-    bounds.minY = Math.min(bounds.minY, Math.floor(i / width))
-    bounds.maxY = Math.max(bounds.maxY, Math.floor(i / width))
-  }
-  bounds.maxX += 1
-  bounds.maxY += 1
-  if (bounds.minX >= bounds.maxX || bounds.minY >= bounds.maxY) {
-    throw new Error('品牌图标没有可见实体')
-  }
-  return bounds
-}
 
 export function copyHandoffCanvas(source: HandoffSource): HTMLCanvasElement {
   if (source.artwork.width < 1 || source.artwork.height < 1 ||

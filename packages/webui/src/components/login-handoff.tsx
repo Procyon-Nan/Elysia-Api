@@ -3,15 +3,12 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getToken, setToken } from '@/lib/auth'
 import { Z_INDEX } from '@/lib/z-index'
+import { prepareBrandImage, readImageBounds, type ContentBounds } from '@/lib/brand-assets'
 import {
-  brandImageUrl,
   copyHandoffCanvas,
   createFlightKeyframes,
   HANDOFF_BLEND_DURATION,
   HANDOFF_FLIGHT_DURATION,
-  prepareBrandImage,
-  readImageBounds,
-  type ContentBounds,
   type HandoffMotionSource,
   type HandoffSource,
 } from '@/lib/login-handoff'
@@ -99,7 +96,6 @@ export function LoginHandoffProvider({ children }: { children: ReactNode }) {
   const anchorRef = useRef<HTMLSpanElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null)
-  const targetRef = useRef<HTMLImageElement>(null)
   const generationRef = useRef(0)
   const handoffRef = useRef<HandoffState | null>(null)
   const navigationCommittedRef = useRef(false)
@@ -136,7 +132,9 @@ export function LoginHandoffProvider({ children }: { children: ReactNode }) {
     restoreDurationsRef.current?.()
     restoreDurationsRef.current = null
     navigationCommittedRef.current = false
-    setHandoff(null)
+    // 到达后必须在同一次 React 提交中移除飞行 Canvas；桌面端同时恢复首页 Logo，
+    // 避免浏览器在两次提交之间绘制出空白帧或重复帧。
+    flushSync(() => setHandoff(null))
     requestAnimationFrame(() => {
       document.getElementById('main-content')?.focus({ preventScroll: true })
     })
@@ -211,6 +209,7 @@ export function LoginHandoffProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     let animation: Animation | null = null
     let completedAnimation: Animation | null = null
+    const mobile = window.matchMedia('(max-width: 760px)').matches
     const reducedMotion = handoff.reducedMotion || reducedMotionRef.current
     const startAnimation = (source: HandoffMotionSource, targetRect: DOMRectReadOnly, duration: number) => {
       const keyframes = createFlightKeyframes(
@@ -238,7 +237,10 @@ export function LoginHandoffProvider({ children }: { children: ReactNode }) {
         const finalTransform = keyframes[keyframes.length - 1]?.transform
         if (typeof finalTransform === 'string') canvas.style.transform = finalTransform
         completedAnimation = animation
-        setHandoff((current) => current ? { ...current, stage: 'blending' } : current)
+        // 桌面端的首页 Logo 与飞行刻印使用同一资源，到达最终帧后直接原子切换，
+        // 不再创建额外的终点图或透明度叠加窗口。移动端没有常驻 Logo，仍需淡出 Canvas。
+        if (mobile) setHandoff((current) => current ? { ...current, stage: 'blending' } : current)
+        else finishHandoff(handoff.generation)
       }, () => undefined)
     }
     startAnimation(handoff.source, handoff.targetRect, reducedMotion ? 0 : flightDuration)
@@ -262,22 +264,18 @@ export function LoginHandoffProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('resize', resize)
       if (animation !== completedAnimation) animation?.cancel()
     }
-  }, [handoff])
+  }, [finishHandoff, handoff])
 
   useLayoutEffect(() => {
     if (!handoff || handoff.stage !== 'blending') return
-    const target = targetRef.current
     const canvas = canvasRef.current
     const mobile = window.matchMedia('(max-width: 760px)').matches
-    const animatedElement = mobile ? canvas : target
-    if (!animatedElement) return
-    if (mobile) animatedElement.style.opacity = '1'
+    if (!mobile || !canvas) return
+    // 移动端没有常驻 BrandMark，只淡出飞行 Canvas 到预先计算的虚拟位置。
     const blendDuration = readHandoffDuration(BLEND_DURATION_VARIABLE, HANDOFF_BLEND_DURATION)
     const reducedMotion = handoff.reducedMotion || reducedMotionRef.current
-    const animation = animatedElement.animate(
-      mobile ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1 }],
-      { duration: reducedMotion ? 0 : blendDuration, easing: 'ease-out', fill: 'forwards' },
-    )
+    const timing = { duration: reducedMotion ? 0 : blendDuration, easing: 'ease-out', fill: 'forwards' as const }
+    const animation = canvas.animate([{ opacity: 1 }, { opacity: 0 }], timing)
     animationsRef.current = [animation]
     let cancelled = false
     void animation.finished.then(() => {
@@ -399,7 +397,6 @@ export function LoginHandoffProvider({ children }: { children: ReactNode }) {
             />
           </div>
           <canvas ref={canvasRef} className="login-handoff-canvas" />
-          <img ref={targetRef} className="login-handoff-target" src={brandImageUrl()} alt="" decoding="async" />
           <div className="login-handoff-shield" />
         </div>,
         document.body,
